@@ -1,0 +1,42 @@
+create or replace PACKAGE                               bc_dashboard AS 
+
+  /* ---------------------------------------------------------------------------------------------
+   |  Description: THONG KE SO LUONG LAP MOI, GO THEO PCT, TTVT= HD_THUEBAO(DONVI_ID), TOVT=CSS_HCM.HDTB_DV(DONVI_ID) 
+   |  Author: 
+   |  Creation Date: 22-aug-2020
+  */ ---------------------------------------------------------------------------------------------
+PROCEDURE tke_lm_go_theo_dvtb
+  (
+      i_Thang in varchar2, --yyyymm
+      i_TTVT in number,
+      o_data OUT sys_refcursor   
+   )  
+;
+
+PROCEDURE i8_tk_tyle_ccdv_va_scdv_nghiem_thu_mobile_app
+     (
+        vtungay varchar2,           --dd/mm/yyyy
+        vdenngay varchar2,          --dd/mm/yyyy
+--        vnguoidung_id varchar2,     --
+--        vdonvi_cha_id number,
+        vtrangthai varchar2,        --all: xem tong quat; chi_tiet: xem chi tiet
+        returnds out SYS_REFCURSOR
+    );
+
+PROCEDURE i8_tk_tyle_nvvt_sudung_mobile_app
+     (
+        vtungay varchar2,           --dd/MM/yyyy
+        vdenngay varchar2,          --dd/MM/yyyy
+--        vnguoidung_id varchar2,
+--        vdonvi_cha_id number,
+        vtrangthai varchar2,        --all: xem tong quat; chi_tiet: xem chi tiet
+        returnds out SYS_REFCURSOR
+    );
+    PROCEDURE i8_sudung_mobile_app_by_khanh
+     (
+        vtungay varchar2,
+        vdenngay varchar2, 
+        returnds out SYS_REFCURSOR
+    );
+
+END bc_dashboard;

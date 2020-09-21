@@ -1,0 +1,458 @@
+create or replace PACKAGE  body                             bc_dashboard AS 
+  /* TODO enter package declarations (types, exceptions, methods etc) here */ 
+  
+PROCEDURE tke_lm_go_theo_dvtb
+  (
+      i_Thang in varchar2, --yyyymm
+      i_TTVT in number,
+      o_data OUT sys_refcursor   
+   ) AS
+   v_sql varchar2(32000);
+   i_count NUMBER;
+BEGIN
+    begin
+      select count(*) into i_count from kiemsoat.th_go_lm_theo_dvtb
+      where nam = to_number(SUBSTR(i_Thang,1,4)) and thang = (SUBSTR(i_Thang,5,2)); 
+      exception
+        when no_data_found then i_count := 0;
+    end;
+    if i_count=0 then
+    --lay thang hien tai
+      v_sql :='
+              with tk as 
+              (
+              select to_number(TO_char(a.ngay_yc,''mm'')) thang, to_number(TO_char(a.ngay_yc,''yyyy'')) nam,
+                        hdtb_id,thuebao_id, loaitb_id, dichvuvt_id
+                     , ma_tb, ngay_bbbg, ngaycn_bbbg,donvi_id ttvt, a.tovt
+                     ,ngay_yc,ten_kieuld,kieuld_id, tthd_id , ten_tb ,0 soluong_lm, 1 soluong_go
+                     ,case when loaitb_id in (61,171) then ''MyTV''
+                          when loaitb_id=11 then ''MegaVNN''
+                          when loaitb_id=58 then ''FiberVNN''
+                      else 
+                          (select ten_dvvt from CSS_HCM.dichvu_vt where dichvuvt_id=a.dichvuvt_id)
+                      end dichvu,
+                      (select ten_dv from ADMIN_HCM.donvi where donvi_id = a.donvi_id) as ten_dv
+              from BAOCAO_PTTB.mv_pct_go a
+              where to_char(a.ngay_yc,''yyyymm'') = '||i_Thang||'
+              union all
+              --LẮP MỚI
+              select to_number(TO_char(NGAYCN_BBBG,''mm'')) thang, to_number(TO_char(NGAYCN_BBBG,''yyyy'')) nam,
+              a.hdtb_id, a.thuebao_id, a.loaitb_id, a.dichvuvt_id 
+                      , A.ma_tb, A.ngay_bbbg, A.ngaycn_bbbg, A.donvi_id_hd ttvt, A.donvi_id_ttvt tovt 
+                      , A.ngay_yc, A.ten_kieuld , A.kieuld_id, A.tthd_id, A.ten_tb,1 soluong_lm, 0 soluong_go
+                      , case when loaitb_id in (61,171) then ''MyTV''
+                          when loaitb_id=11 then ''MegaVNN''
+                          when loaitb_id=58 then ''FiberVNN''
+                        else 
+                          (select ten_dvvt from CSS_HCM.dichvu_vt where dichvuvt_id=a.dichvuvt_id)
+                        end dichvu ,
+              (select ten_dv from ADMIN_HCM.donvi where donvi_id = A.donvi_id_hd) as ten_dv
+              from baocao_pttb.V_PCT_LAPMOI a 
+              where to_char(NGAYCN_BBBG,''yyyymm'')='||i_Thang||'
+                    and loaihd_id not in (6)--chuyển đổi loại hình
+              )  
+              select nam,thang,ttvt,tovt,dichvu,sum(soluong_lm) soluong_lm, sum(soluong_go) soluong_go,ten_dv 
+              from tk tk
+              group by nam,thang,ttvt,tovt,dichvu,ten_dv
+      ';
+    else
+    --lay thang old
+      v_sql :='Select a.*,(select ten_dv from ADMIN_HCM.donvi where donvi_id = a.ttvt) as ten_dv from kiemsoat.th_go_lm_theo_dvtb a
+      where nam = to_number(SUBSTR('|| i_Thang ||',1,4)) and thang = to_number(SUBSTR('||i_Thang||',5,2))'
+                          ;
+    end if; 
+     open o_data for v_sql ;
+END ;  
+
+/* ------------------------------------------------------------------------
+   |  Mô ta: Report - i8_tk_tyle_ccdv_va_scdv_nghiem_thu_mobile_app
+   |  Thuc hien: Nguyen Vu Linh
+   |  Ngày tao: 28/08/2020
+*/ ------------------------------------------------------------------------
+PROCEDURE i8_tk_tyle_ccdv_va_scdv_nghiem_thu_mobile_app
+     (
+        vtungay varchar2,           --dd/mm/yyyy
+        vdenngay varchar2,          --dd/mm/yyyy
+--        vnguoidung_id varchar2,     
+--        vdonvi_cha_id number,
+        vtrangthai varchar2,        --all: xem tong quat; chi_tiet: xem chi tiet
+        returnds out SYS_REFCURSOR
+    )
+    IS
+        vnguoidung_id varchar2(100);
+        vdonvi_cha_id number;
+        str varchar2(32767);
+        v_tenbc varchar2(100) := 'Báo cáo I8';
+        v_donvi_cha_id number;
+    BEGIN
+        
+        if vtrangthai='chi_tiet' then
+        OPEN returnds FOR
+            with tk as(
+            select (
+            select count(sl) sl from
+            (select dvn.ten_dv, 1 sl
+            from css_hcm.giaophieu c,css_hcm.huonggiao d ,css_hcm.hd_thuebao hd
+                ,css_hcm.hd_khachhang kh,admin_hcm.donvi dvn,admin_hcm.nhanvien nv
+            where hd.hdkh_id=kh.hdkh_id
+                    and kh.loaihd_id in(1,3,6,30) and hd.loaitb_id not in (14,15,16,17) and hd.dichvuvt_id not in (7,8,9)
+                    and hd.hdtb_id = c.hdtb_id and hd.tthd_id=6
+                    and c.huonggiao_id = d.huonggiao_id and d.tthd_id in (3,4)
+                    and c.phieu_id in(select max(phieu_id) from css_hcm.giaophieu gg, css_hcm.huonggiao hh
+                                            where hdtb_id=c.hdtb_id and gg.huonggiao_id=hh.huonggiao_id and hh.tthd_id in (3,4))
+                and dvn.donvi_id=c.donvi_nhan_id and nv.nhanvien_id=c.nhanvien_th_id(+) 
+                and lower(dvn.tiento) not like '%uc%' and lower(dvn.tiento) not like '%he1%' and dvn.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                and trunc(hd.ngay_ins) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy')                
+            union all            
+            select dvn.ten_dv, 1 sl
+            from baohong_hcm.baohong a,css_hcm.db_thuebao b,baohong_hcm.giaophieu gp, admin_hcm.donvi dvn
+            where 
+                a.ttbh_id=6 and a.dichvuvt_id in(1,4,7,8,9,11)
+                and a.thuebao_id=b.thuebao_id and a.baohong_id=gp.baohong_id
+                and a.khoaphieu=0 and nvl(gp.nd_giao,'1') not like '[LAC HUONG]%'
+                and gp.phieu_id=(select max(phieu_id) from baohong_HCM.giaophieu aa, css_HCM.huonggiao bb
+                                              where aa.huonggiao_id = bb.huonggiao_id and bb.ttbh_id in (1,3,8) and aa.baohong_id = a.baohong_id and aa.ttph_id<>3)
+                and gp.donvi_nhan_id=dvn.donvi_id and a.donvi_ins_id not in (552,556)
+                and lower(dvn.tiento) not like '%uc%' and lower(dvn.tiento) not like '%he1%' and dvn.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                and trunc(a.ngay_ht) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy'))
+            ) tong
+            ,(select count(sl) from
+            (select --c.hdtb_id, hd.ma_tb, d.huonggiao,nv.ma_nv || '-' || nv.ten_nv nhanvien_th,c.donvi_nhan_id,dvn.donvi_cha_id,
+            dvn.ten_dvql, 1 sl
+            , case when instr((select listagg (may_cn,',') within group (order by phieu_id) from css_hcm.giaophieu gg 
+                where gg.hdtb_id = hd.hdtb_id),'SMP') > 0 then 1 else 0 end nt_app
+            from css_hcm.giaophieu c,css_hcm.huonggiao d ,css_hcm.hd_thuebao hd
+                ,css_hcm.hd_khachhang kh,admin_hcm.donvi dvn,admin_hcm.nhanvien nv
+            where hd.hdkh_id=kh.hdkh_id
+                    and kh.loaihd_id in(1,3,6,30) and hd.loaitb_id not in (14,15,16,17) and hd.dichvuvt_id not in (7,8,9)
+                    and hd.hdtb_id = c.hdtb_id and hd.tthd_id=6
+                    and c.huonggiao_id = d.huonggiao_id and d.tthd_id in (3,4)
+                    
+                    and c.phieu_id in(select max(phieu_id) from css_hcm.giaophieu gg, css_hcm.huonggiao hh
+                                            where hdtb_id=c.hdtb_id and gg.huonggiao_id=hh.huonggiao_id and hh.tthd_id in (3,4))
+                and dvn.donvi_id=c.donvi_nhan_id and nv.nhanvien_id=c.nhanvien_th_id(+)
+                and lower(dvn.tiento) not like '%uc%' and lower(dvn.tiento) not like '%he1%' and dvn.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                and trunc(hd.ngay_ins) BETWEEN to_date(''||vtungay||'','dd/MM/yyyy') and to_date(''||vdenngay||'','dd/MM/yyyy')                
+            union all            
+            select dvn.ten_dvql, 1 sl
+            ,(case when instr((select listagg (may_cn,',') within group (order by phieu_id) from baohong_hcm.giaophieu gg 
+                                        where gg.baohong_id = a.baohong_id),'VNPT-') > 0 then 1 else 0 end) nt_app
+            from baohong_hcm.baohong a,css_hcm.db_thuebao b,baohong_hcm.giaophieu gp, admin_hcm.donvi dvn
+            where 
+                a.ttbh_id=6 and a.dichvuvt_id in(1,4,7,8,9,11) 
+                and a.thuebao_id=b.thuebao_id and a.baohong_id=gp.baohong_id
+                and a.khoaphieu=0 and nvl(gp.nd_giao,'1') not like '[LAC HUONG]%'
+                and gp.phieu_id=(select max(phieu_id) from baohong_HCM.giaophieu aa, css_HCM.huonggiao bb
+                                    where aa.huonggiao_id = bb.huonggiao_id and bb.ttbh_id in (1,3,8) 
+                                        and aa.baohong_id = a.baohong_id and aa.ttph_id<>3)
+                and gp.donvi_nhan_id=dvn.donvi_id and a.donvi_ins_id not in (552,556) 
+                and lower(dvn.tiento) not like '%uc%' and lower(dvn.tiento) not like '%he1%' 
+                and dvn.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                and trunc(a.ngay_ht) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy')
+             ) where nt_app = 1
+            ) nt_app
+            from dual
+        )
+        ----------
+            select to_char(c.hdtb_id) hdtb_id,hd.ma_tb,kh.ma_gd,'' baohong_id,d.huonggiao,nv.ma_nv || '-' || nv.ten_nv nhanvien_th
+                ,c.donvi_nhan_id,dvn.donvi_cha_id,
+                dvn.ten_dv, 1 sl
+                ,case when instr((select listagg (may_cn,',') within group (order by phieu_id) from css_hcm.giaophieu 
+                    where hdtb_id = hd.hdtb_id),'SMP') > 0 then 1 else 0 end nt_app
+            from css_hcm.giaophieu c,css_hcm.huonggiao d ,css_hcm.hd_thuebao hd
+                ,css_hcm.hd_khachhang kh,admin_hcm.donvi dvn,admin_hcm.nhanvien nv
+            where hd.hdkh_id = kh.hdkh_id
+                    and kh.loaihd_id in(1,3,6,30) and hd.loaitb_id not in (14,15,16,17) 
+                    and hd.dichvuvt_id not in (7,8,9) and hd.hdtb_id = c.hdtb_id and hd.tthd_id=6
+                    and c.huonggiao_id = d.huonggiao_id and d.tthd_id in (3,4)
+                    and c.phieu_id in(select max(phieu_id) from css_hcm.giaophieu gg, css_hcm.huonggiao hh
+                                            where hdtb_id=c.hdtb_id and gg.huonggiao_id=hh.huonggiao_id and hh.tthd_id in (3,4))
+                and dvn.donvi_id=c.donvi_nhan_id and nv.nhanvien_id=c.nhanvien_th_id(+)
+                and lower(dvn.tiento) not like '%uc%' 
+                and lower(dvn.tiento) not like '%he1%' 
+                and dvn.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                and trunc(hd.ngay_ins) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy')                
+            union all            
+            select '' hdtb_id,b.ma_tb, '' ma_gd, to_char(a.baohong_id) baohong_id,'baohong' huonggiao
+            ,(select ma_nv||'-'||ten_nv from admin_hcm.nhanvien where nhanvien_id(+)=a.nhanvien_ins_id) nhanvien_th
+            ,gp.donvi_nhan_id
+            ,dvn.donvi_cha_id
+            ,dvn.ten_dv, 1 sl
+            ,case when instr((select listagg (may_cn,',') within group (order by phieu_id) from baohong_hcm.giaophieu 
+                where baohong_id = a.baohong_id),'VNPT-') > 0 then 1 else 0 end nt_app
+            from baohong_hcm.baohong a,css_hcm.db_thuebao b,baohong_hcm.giaophieu gp, admin_hcm.donvi dvn
+            where 
+                a.ttbh_id=6 and a.dichvuvt_id in(1,4,7,8,9,11)
+                and a.thuebao_id=b.thuebao_id and a.baohong_id=gp.baohong_id
+                and a.khoaphieu=0 and nvl(gp.nd_giao,'1') not like '[LAC HUONG]%'
+                and gp.phieu_id=(select max(phieu_id) from baohong_HCM.giaophieu aa, css_HCM.huonggiao bb
+                                where aa.huonggiao_id = bb.huonggiao_id and bb.ttbh_id in (1,3,8) 
+                                    and aa.baohong_id = a.baohong_id and aa.ttph_id<>3)
+                and gp.donvi_nhan_id=dvn.donvi_id and a.donvi_ins_id not in (552,556) 
+                and lower(dvn.tiento) not like '%uc%' and lower(dvn.tiento) not like '%he1%' 
+                and dvn.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                and trunc(a.ngay_ht) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy');
+        end if;
+        if vtrangthai = 'all' then
+        OPEN returnds FOR
+         with tk as(
+            select (
+            select count(sl) sl from
+            (select dvn.ten_dv, 1 sl
+            from css_hcm.giaophieu c,css_hcm.huonggiao d ,css_hcm.hd_thuebao hd
+            ,css_hcm.hd_khachhang kh,admin_hcm.donvi dvn,admin_hcm.nhanvien nv
+            where hd.hdkh_id=kh.hdkh_id
+                    and kh.loaihd_id in(1,3,6,30) and hd.loaitb_id not in (14,15,16,17) and hd.dichvuvt_id not in (7,8,9)
+                    and hd.hdtb_id = c.hdtb_id and hd.tthd_id=6
+                    and c.huonggiao_id = d.huonggiao_id and d.tthd_id in (3,4)
+                    and c.phieu_id in(select max(phieu_id) from css_hcm.giaophieu gg, css_hcm.huonggiao hh
+                                                            where hdtb_id=c.hdtb_id and gg.huonggiao_id=hh.huonggiao_id and hh.tthd_id in (3,4))
+                and dvn.donvi_id=c.donvi_nhan_id and nv.nhanvien_id=c.nhanvien_th_id(+) 
+                and lower(dvn.tiento) not like '%uc%' and lower(dvn.tiento) not like '%he1%' and dvn.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                and trunc(hd.ngay_ins) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy')
+                
+            union all
+            
+            select dvn.ten_dv, 1 sl
+            from baohong_hcm.baohong a,css_hcm.db_thuebao b,baohong_hcm.giaophieu gp, admin_hcm.donvi dvn
+            where 
+                a.ttbh_id=6 and a.dichvuvt_id in(1,4,7,8,9,11)
+                and a.thuebao_id=b.thuebao_id and a.baohong_id=gp.baohong_id
+                and a.khoaphieu=0 and nvl(gp.nd_giao,'1') not like '[LAC HUONG]%'
+                and gp.phieu_id=(select max(phieu_id) from baohong_HCM.giaophieu aa, css_HCM.huonggiao bb
+                                              where aa.huonggiao_id = bb.huonggiao_id and bb.ttbh_id in (1,3,8) and aa.baohong_id = a.baohong_id and aa.ttph_id<>3)
+                and gp.donvi_nhan_id=dvn.donvi_id and a.donvi_ins_id not in (552,556)
+                and lower(dvn.tiento) not like '%uc%' and lower(dvn.tiento) not like '%he1%' and dvn.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                and trunc(a.ngay_ht) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy'))
+            ) tong
+            ,(select count(sl) from
+            (select --c.hdtb_id,d.huonggiao,nv.ma_nv || '-' || nv.ten_nv nhanvien_th,c.donvi_nhan_id,dvn.donvi_cha_id,
+            dvn.ten_dvql, 1 sl
+            , case when instr((select listagg (may_cn,',') within group (order by phieu_id) from css_hcm.giaophieu 
+                    where hdtb_id = c.hdtb_id),'SMP') > 0 then 1 else 0 end nt_app
+            from css_hcm.giaophieu c,css_hcm.huonggiao d ,css_hcm.hd_thuebao hd
+                ,css_hcm.hd_khachhang kh,admin_hcm.donvi dvn,admin_hcm.nhanvien nv
+            where hd.hdkh_id=kh.hdkh_id
+                    and kh.loaihd_id in(1,3,6,30) and hd.loaitb_id not in (14,15,16,17) and hd.dichvuvt_id not in (7,8,9)
+                    and hd.hdtb_id = c.hdtb_id and hd.tthd_id=6
+                    and c.huonggiao_id = d.huonggiao_id and d.tthd_id in (3,4)
+                    and c.phieu_id in(select max(phieu_id) from css_hcm.giaophieu gg, css_hcm.huonggiao hh
+                                                            where hdtb_id=c.hdtb_id and gg.huonggiao_id=hh.huonggiao_id and hh.tthd_id in (3,4))
+                and dvn.donvi_id=c.donvi_nhan_id and nv.nhanvien_id=c.nhanvien_th_id(+)
+                and lower(dvn.tiento) not like '%uc%' and lower(dvn.tiento) not like '%he1%' and dvn.donvi_cha_id in (41,42,43,44,45,56,57,59,60) 
+                and trunc(hd.ngay_ins) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy')
+                
+            union all
+            
+            select dvn.ten_dvql, 1 sl
+            ,case when instr((select listagg (may_cn,',') within group (order by phieu_id) from baohong_hcm.giaophieu 
+                            where baohong_id = a.baohong_id),'VNPT-') > 0 then 1 else 0 end nt_app
+            from baohong_hcm.baohong a,css_hcm.db_thuebao b,baohong_hcm.giaophieu gp, admin_hcm.donvi dvn
+            where 
+                a.ttbh_id=6 and a.dichvuvt_id in(1,4,7,8,9,11)
+                and a.thuebao_id=b.thuebao_id and a.baohong_id=gp.baohong_id
+                and a.khoaphieu=0 and nvl(gp.nd_giao,'1') not like '[LAC HUONG]%'
+                and gp.phieu_id=(select max(phieu_id) from baohong_HCM.giaophieu aa, css_HCM.huonggiao bb
+                                              where aa.huonggiao_id = bb.huonggiao_id and bb.ttbh_id in (1,3,8) and aa.baohong_id = a.baohong_id and aa.ttph_id<>3)
+                and gp.donvi_nhan_id=dvn.donvi_id and a.donvi_ins_id not in (552,556) and lower(dvn.tiento) not like '%uc%' and lower(dvn.tiento) not like '%he1%' 
+                and dvn.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                and trunc(a.ngay_ht) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy')
+             ) where nt_app = 1
+            ) nt_app
+            from dual
+        )
+        ----------
+            select substr(ten_dv,1,instr(ten_dv,'-')-1) doi_vt,sum(sl) pct_ccdv_va_scdv_hoan_tat, sum(nt_app) pct_hoan_tat_qua_mobile_app,round((sum(nt_app) * 100 / sum(sl)),2) ty_le from
+            (select --c.hdtb_id,d.huonggiao,nv.ma_nv || '-' || nv.ten_nv nhanvien_th,c.donvi_nhan_id,dvn.donvi_cha_id,
+            dvn.ten_dv, 1 sl--, (case when log.action_name is not null then 1 else 0 end) nt_app
+            , case when instr((select listagg (may_cn,',') within group (order by phieu_id) from css_hcm.giaophieu 
+                where hdtb_id = hd.hdtb_id),'SMP') > 0 then 1 else 0 end nt_app
+            from css_hcm.giaophieu c,css_hcm.huonggiao d ,css_hcm.hd_thuebao hd
+                , css_hcm.hd_khachhang kh,admin_hcm.donvi dvn,admin_hcm.nhanvien nv            
+            where hd.hdkh_id=kh.hdkh_id
+                    and kh.loaihd_id in(1,3,6,30) and hd.loaitb_id not in (14,15,16,17) and hd.dichvuvt_id not in (7,8,9)
+                    and hd.hdtb_id = c.hdtb_id and hd.tthd_id=6
+                    and c.huonggiao_id = d.huonggiao_id and d.tthd_id in (3,4)
+                    and c.phieu_id in(select max(phieu_id) from css_hcm.giaophieu gg, css_hcm.huonggiao hh
+                                                            where hdtb_id=c.hdtb_id and gg.huonggiao_id=hh.huonggiao_id and hh.tthd_id in (3,4))
+                and dvn.donvi_id=c.donvi_nhan_id and nv.nhanvien_id=c.nhanvien_th_id(+)
+                and lower(dvn.tiento) not like '%uc%' and lower(dvn.tiento) not like '%he1%' and dvn.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                and trunc(hd.ngay_ins) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy')
+                
+            union all
+            
+            select dvn.ten_dv, 1 sl
+            , case when instr((select listagg (may_cn,',') within group (order by phieu_id) from baohong_hcm.giaophieu 
+                    where baohong_id = a.baohong_id),'VNPT-') > 0 then 1 else 0 end nt_app
+            from baohong_hcm.baohong a,css_hcm.db_thuebao b,baohong_hcm.giaophieu gp, admin_hcm.donvi dvn
+            where 
+                a.ttbh_id=6 and a.dichvuvt_id in(1,4,7,8,9,11)
+                and a.thuebao_id=b.thuebao_id and a.baohong_id=gp.baohong_id
+                and a.khoaphieu=0 and nvl(gp.nd_giao,'1') not like '[LAC HUONG]%'
+                and gp.phieu_id=(select max(phieu_id) from baohong_HCM.giaophieu aa, css_HCM.huonggiao bb
+                                              where aa.huonggiao_id = bb.huonggiao_id and bb.ttbh_id in (1,3,8) and aa.baohong_id = a.baohong_id and aa.ttph_id<>3)
+                and gp.donvi_nhan_id=dvn.donvi_id and a.donvi_ins_id not in (552,556) and lower(dvn.tiento) not like '%uc%' and lower(dvn.tiento) not like '%he1%' 
+                and dvn.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                and trunc(a.ngay_ht) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy'))
+            group by ten_dv;
+--        union all
+--            select to_char(unistr('Trung T\00E2m Vi\1EC5n Th\00F4ng')) ten_dvql, tong pct_ccdv_va_scdv_hoan_tat, tk.nt_app pct_hoan_tat_qua_mobile_app, round((tk.nt_app * 100 / tong),2) ty_le from tk
+--        ;--ttvt xem
+        end if;
+        
+    end i8_tk_tyle_ccdv_va_scdv_nghiem_thu_mobile_app;
+
+/* ------------------------------------------------------------------------
+   |  Mô ta: Report - i8_tk_tyle_nvvt_sudung_mobile_app
+   |  Thuc hien: Nguyen Vu Linh
+   |  Ngày tao: 27/04/2020
+*/ ------------------------------------------------------------------------
+PROCEDURE i8_tk_tyle_nvvt_sudung_mobile_app
+     (
+        vtungay varchar2,           --dd/MM/yyyy
+        vdenngay varchar2,          --dd/MM/yyyy
+--        vnguoidung_id varchar2,
+--        vdonvi_cha_id number,
+        vtrangthai varchar2,        --all: xem tong quat; chi_tiet: xem chi tiet
+        returnds out SYS_REFCURSOR
+    )
+    IS
+        vdonvi_cha_id number;
+        str varchar2(32767);
+        v_tenbc varchar2(100) := 'Báo cáo I8';
+        v_donvi_cha_id number;
+    BEGIN
+        
+        if vtrangthai <> 'all' then
+        OPEN returnds FOR
+         with danhsach_nd as(
+                select --count(distinct nd.ma_nd)
+                        distinct nd.ma_nd||'-'||nv.ten_nv ten_nv,nd.ma_nd,nd.nhanvien_id, dv.donvi_id,dv.ten_dv, dv.donvi_cha_id,dv.ten_dvql
+                from admin_hcm.donvi dv, admin_hcm.nhanvien nv, admin_hcm.nhanvien_lnv lnv, admin_hcm.nguoidung nd, ADMIN_HCM.donvi_ldv ldv, admin_hcm.loai_nv l
+                where nv.donvi_id=dv.donvi_id and nv.nhanvien_id=lnv.nhanvien_id  and nd.nhanvien_id=nv.nhanvien_id and lnv.loainv_id in (5,6,11,21,51)
+                    and l.loainv_id=lnv.loainv_id
+                    and lower(tiento) not like '%he1%'
+                    and ldv.loaidv_id = 5 and lower(dv.ten_dv) like unistr('%\0111\1ED9i vi\1EC5n th\00F4ng%') 
+                    and NOT REGEXP_LIKE(nd.ma_nd, '[A-Za-z]') 
+                    --and NOT REGEXP_LIKE(nd.ma_nd, '[A-Za-z]')
+                    and nd.trangthai=1 and dv.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                )
+                    select 
+                    ten_nv
+                    ,substr(ten_dv,1,instr(ten_dv,'-')-1)doi_vt   
+                    , (case when action_name is not null then 'đã login' else 'chưa' end) login
+                    from(
+                    select distinct b.*, a.action_name--count(distinct b.nhanvien_id) 
+                    from (select distinct user_name, action_name,datetime from ADMIN_hcm.log_action 
+                            where action_name = 'Login' 
+                            and key_parameter='WebAPi.PostDangNhap' 
+                            and trunc(datetime) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy')) a,danhsach_nd b --dk ngay
+                            --and trunc(datetime) BETWEEN '01-apr-20' and '30-apr-20') a,danhsach_nd b --dk ngay
+                    where 
+                        a.user_name(+)=b.ma_nd 
+                    ) th
+                    where donvi_cha_id in (41,42,43,44,45,56,57,59,60);
+        end if;
+        if vtrangthai = 'all' then
+        OPEN returnds FOR
+         with danhsach_nd as(
+                select --count(distinct nd.ma_nd)
+                        distinct nd.ma_nd||'-'||nv.ten_nv ten_nv,nd.ma_nd,nd.nhanvien_id, dv.donvi_id,dv.ten_dv, dv.donvi_cha_id,dv.ten_dvql
+                from admin_hcm.donvi dv, admin_hcm.nhanvien nv, admin_hcm.nhanvien_lnv lnv, admin_hcm.nguoidung nd, ADMIN_HCM.donvi_ldv ldv, admin_hcm.loai_nv l
+                where nv.donvi_id=dv.donvi_id and nv.nhanvien_id=lnv.nhanvien_id  and nd.nhanvien_id=nv.nhanvien_id and lnv.loainv_id in (5,6,11,21,51)
+                    and l.loainv_id=lnv.loainv_id
+                    and lower(tiento) not like '%he1%'
+                    and ldv.loaidv_id = 5 and lower(dv.ten_dv) like unistr('%\0111\1ED9i vi\1EC5n th\00F4ng%') 
+                    and NOT REGEXP_LIKE(nd.ma_nd, '[A-Za-z]') 
+                    and NOT REGEXP_LIKE(nd.ma_nd, '[A-Za-z]')
+                    and nd.trangthai=1 and dv.donvi_cha_id in (41,42,43,44,45,56,57,59,60)
+                )
+                    select 
+                    substr(ten_dv,1,instr(ten_dv,'-')-1)doi_vt   --ttvt
+                --    ten_dvql ttvt   --vttp
+                    , sum(case when action_name is not null then 1 else 0 end) login
+                    , sum(1) tong
+                    , round((sum(case when action_name is not null then 1 else 0 end) * 100/sum(1)),2) ty_le
+                    from(
+                    select distinct b.*, a.action_name--count(distinct b.nhanvien_id) 
+                    from (select distinct user_name, action_name,datetime from ADMIN_hcm.log_action 
+                            where action_name = 'Login' 
+                            and key_parameter='WebAPi.PostDangNhap' 
+                            and trunc(datetime) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy') and to_date(''||vdenngay||'','dd/mm/yyyy')) a,danhsach_nd b --dk ngay
+                    where 
+                        a.user_name(+)=b.ma_nd 
+                    ) th
+                    where donvi_cha_id in (41,42,43,44,45,56,57,59,60) --ttvt co dk
+                    group by ten_dv  --ttvt
+                    
+                    
+                ;--ttvt xem
+        end if;
+        
+    END i8_tk_tyle_nvvt_sudung_mobile_app;
+
+/* ------------------------------------------------------------------------
+   |  Mô ta: Report - 
+   |  Thuc hien: Khanh
+   |  Ngày tao: 28/08/2020
+*/ ------------------------------------------------------------------------
+PROCEDURE i8_sudung_mobile_app_by_khanh
+     (
+        vtungay varchar2,           --dd/mm/yyyy
+        vdenngay varchar2,          --dd/mm/yyyy
+        returnds out SYS_REFCURSOR
+    )
+    IS
+    BEGIN
+       OPEN returnds FOR
+                      select Count(*) as sl_login,
+                     (select ten_dv from ADMIN_HCM.donvi where donvi_id = donvicha_id) as ten_tt,
+                     donvicha_id ,
+                     ten_dv,
+                     dv_id,
+                     (select count(*) 
+                      from  ADMIN_HCM.donvi m_dv,admin_hcm.nhanvien m_nv 
+                      where m_dv.donvi_id = m_nv.donvi_id and m_dv.donvi_id  = dv_id)as tong_nv,
+                      ROUND(count(*)/
+                      (select count(*) 
+                      from  ADMIN_HCM.donvi m_dv,admin_hcm.nhanvien m_nv 
+                      where m_dv.donvi_id = m_nv.donvi_id and m_dv.donvi_id  = dv_id),4) as ty_le,
+                      to_char(datetime,'MM/yyyy') as datetime
+               from 
+                ( select DISTINCT
+                        action.action_name,
+                        nd.ma_nd||'-'||nv.ten_nv ten_nv,
+                        nd.ma_nd,
+                        nd.nhanvien_id,
+                        dv.donvi_id dv_id,
+                        dv.ten_dv,
+                        dv.donvi_cha_id as donvicha_id,
+                        dv.ten_dvql,
+                        action.datetime
+                from    admin_hcm.donvi dv, 
+                        admin_hcm.nhanvien nv, 
+                        admin_hcm.nhanvien_lnv lnv, 
+                        admin_hcm.nguoidung nd,
+                        ADMIN_HCM.donvi_ldv ldv,
+                        admin_hcm.loai_nv l,
+                        ADMIN_hcm.log_action action
+                where nv.donvi_id=dv.donvi_id
+                    and nv.nhanvien_id=lnv.nhanvien_id  
+                    and nd.nhanvien_id=nv.nhanvien_id 
+                    and lnv.loainv_id in (5,6,11,21,51)
+                    and l.loainv_id=lnv.loainv_id
+                    and lower(tiento) not like '%he1%'
+                    and ldv.loaidv_id = 5 
+                    and lower(dv.ten_dv) like unistr('%\0111\1ED9i vi\1EC5n th\00F4ng%') 
+                    and NOT REGEXP_LIKE(nd.ma_nd, '[A-Za-z]') 
+                    and nd.trangthai=1 
+                    and action.user_name (+) = nd.ma_nd
+                    and action.action_name = 'Login' 
+                    and trunc(action.datetime) BETWEEN to_date(''||vtungay||'','dd/mm/yyyy')and to_date(''||vdenngay||'','dd/mm/yyyy')
+                    )
+                    group by donvicha_id,ten_dv,dv_id,to_char(datetime,'MM/yyyy')
+                    order by donvicha_id
+                    ;
+ END i8_sudung_mobile_app_by_khanh;
+
+END bc_dashboard;
