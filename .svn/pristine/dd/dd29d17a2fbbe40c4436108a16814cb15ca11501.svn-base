@@ -1,0 +1,88 @@
+﻿using ClassModel.connnection.oracle;
+using ClassModel.model.bsc;
+using Dapper;
+using Microsoft.Extensions.Configuration;
+using Oracle.ManagedDataAccess.Client;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace DashBoardApi.server.bcs.impl
+{
+    public class BscImpl: IBsc
+    {
+        private IConfiguration m_configuration;
+        public BscImpl(IConfiguration configuration)
+        {
+            m_configuration = configuration;
+        }
+        /*
+          call stores  with the parameter
+          the first
+        */
+        public dynamic execureI8MobileApp(BscRequest bscRequest)
+        {
+            object result = null;
+            var dyParam = new OracleDynamicParameters();
+            dyParam.Add("vtungay", OracleDbType.Varchar2, ParameterDirection.Input, bscRequest.vtungay);
+            dyParam.Add("vdenngay", OracleDbType.Varchar2, ParameterDirection.Input, bscRequest.vdenngay);
+            dyParam.Add("vnguoidung_id", OracleDbType.Varchar2, ParameterDirection.Input, bscRequest.vnguoidung_id);
+            dyParam.Add("v_donvi_cha_id", OracleDbType.Int32, ParameterDirection.Input, bscRequest.v_donvi_cha_id);
+            dyParam.Add("vtrangthai", OracleDbType.Varchar2, ParameterDirection.Input, bscRequest.vtrangthai);
+
+            dyParam.Add("returnds", OracleDbType.RefCursor, ParameterDirection.Output);
+            var conn = GetConnection();
+            if (conn.State == ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+
+            if (conn.State == ConnectionState.Open)
+            {
+
+                var query = "baocao_pttb.ttcntt_baocao_baohong.i8_tk_tyle_nvvt_sudung_mobile_app";
+                result = SqlMapper.Query(conn, query, param: dyParam, commandType: CommandType.StoredProcedure);
+            }
+            return result;
+        }
+
+        /*
+         * select the second i8
+         */
+        public dynamic execureI8NghiemThu(BscRequest bscRequest)
+        {
+            object result = null;
+            var dyParam = new OracleDynamicParameters();
+            dyParam.Add("vtungay", OracleDbType.Varchar2, ParameterDirection.Input, bscRequest.vtungay);
+            dyParam.Add("vdenngay", OracleDbType.Varchar2, ParameterDirection.Input, bscRequest.vdenngay);
+            dyParam.Add("vnguoidung_id", OracleDbType.Varchar2, ParameterDirection.Input, bscRequest.vnguoidung_id);
+            dyParam.Add("v_donvi_cha_id", OracleDbType.Int32, ParameterDirection.Input, bscRequest.v_donvi_cha_id);
+            dyParam.Add("vtrangthai", OracleDbType.Varchar2, ParameterDirection.Input, bscRequest.vtrangthai);
+
+            dyParam.Add("returnds", OracleDbType.RefCursor, ParameterDirection.Output);
+            var conn = GetConnection();
+            if (conn.State == ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+
+            if (conn.State == ConnectionState.Open)
+            {
+
+                var query = "baocao_pttb.ttcntt_baocao_baohong.i8_tk_tyle_ccdv_va_scdv_nghiem_thu_mobile_app";
+                result = SqlMapper.Query(conn, query, param: dyParam, commandType: CommandType.StoredProcedure);
+            }
+            return result;
+        }
+
+
+        public IDbConnection GetConnection()
+        {
+            var connectionString = m_configuration.GetSection("connectionstrings").GetSection("defaultconnection2").Value;
+            var conn = new OracleConnection(connectionString);
+            return conn;
+        }
+    }
+}

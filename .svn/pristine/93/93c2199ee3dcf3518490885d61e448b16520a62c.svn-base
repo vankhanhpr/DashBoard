@@ -1,0 +1,80 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using ClassModel.model.bsc;
+using ClassModel.respond;
+using DashBoardApi.schedule;
+using DashBoardApi.server.bcs;
+using Microsoft.AspNetCore.Mvc;
+
+namespace DashBoardApi.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class ValuesController : ControllerBase
+    {
+        private IBsc m_bsc;
+        public ValuesController(IBsc _bsc)
+        {
+            m_bsc = _bsc;
+        }
+        [HttpGet("test")]
+        public dynamic get()
+        {
+            return "success";
+        }
+
+        [HttpPost("execureI8MobileApp")]
+        public dynamic execureI8MobileApp([FromBody] BscRequest data)
+        {
+            return m_bsc.execureI8MobileApp(data);
+        }
+        [HttpPost("execureI8NghiemThu")]
+        public dynamic execureI8NghiemThu([FromBody] BscRequest data)
+        {
+            return m_bsc.execureI8NghiemThu(data);
+        }
+
+        [HttpPost("execureDetailFiberMyTV")]
+        public dynamic execureDetailFiberMyTV([FromBody] BscRequest data)
+        {
+            return m_bsc.execureDetailFiberMyTV(data);
+        }
+
+        [HttpPost("execureDataIncrese")]
+        public DataRespond execureDataIncrese([FromBody] BscRequest data)
+        {
+            DataRespond datarp = new DataRespond();
+            // return "202003".Substring(0, 4);
+            try
+            {
+                datarp.data=  m_bsc.execureDataIncrese(data);
+            }
+            catch(Exception e)
+            {
+                datarp.error =  e;
+            }
+            return datarp;
+        }
+
+        [HttpGet("execureDataIncreseTest")]
+        public DataRespond execureDataIncreseTest()
+        {
+            DataRespond datarp = new DataRespond();
+            BscRequest data = new BscRequest();
+            data.i_Thang = "202007";
+            // return "202003".Substring(0, 4);
+            try
+            {
+                datarp.data = m_bsc.execureDataIncrese(data);
+            }
+            catch (Exception e)
+            {
+                datarp.error = e;
+            }
+            return datarp;
+        }
+
+    }
+}

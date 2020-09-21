@@ -1,0 +1,42 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using ClassModel.model.bsc;
+using DashBoardApi.schedule;
+using DashBoardApi.server.bcs;
+using Microsoft.AspNetCore.Mvc;
+
+namespace DashBoardApi.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class ValuesController : ControllerBase
+    {
+        private IBsc m_bsc;
+        public ValuesController(IBsc _bsc)
+        {
+            m_bsc = _bsc;
+        }
+        [HttpGet("test")]
+        public dynamic get()
+        {
+            return "success";
+        }
+
+        [HttpPost("execureQuery1")]
+        public dynamic execureQuery1([FromBody] BscRequest data)
+        {
+            //var x = m_bsc.execureI8NghiemThu(data);
+            var y = m_bsc.execureDataIncrese(data);
+            //return m_bsc.execureI8NghiemThu(data);
+            return null;
+        }
+        [HttpPost("execureQuery2")]
+        public dynamic execureQuery2([FromBody] BscRequest data)
+        {
+            return m_bsc.execureI8NghiemThu(data);
+        }
+
+    }
+}

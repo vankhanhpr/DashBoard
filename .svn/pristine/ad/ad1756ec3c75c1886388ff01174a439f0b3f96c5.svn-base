@@ -1,0 +1,33 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using ClassModel.model.bsc;
+using DashBoardApi.server.bcs;
+using Microsoft.AspNetCore.Mvc;
+
+namespace DashBoardApi.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class ValuesController : ControllerBase
+    {
+        private IBsc m_bsc;
+        public ValuesController(IBsc _bsc)
+        {
+            m_bsc = _bsc;
+        }
+
+        [HttpPost("execureQuery1")]
+        public ActionResult<IEnumerable<string>> execureQuery1([FromBody] BscRequest data)
+        {
+            return m_bsc.execureI8MobileApp(data);
+        }
+        [HttpPost("execureQuery2")]
+        public ActionResult<IEnumerable<string>> execureQuery2([FromBody] BscRequest data)
+        {
+            return m_bsc.execureI8NghiemThu(data);
+        }
+
+    }
+}

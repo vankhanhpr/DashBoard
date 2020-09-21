@@ -1,0 +1,16 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace ClassModel.model.bsc
+{
+    public class BscRespond
+    {
+        public string TTVT { get; set; }
+        public double LOGIN { get; set; }
+        public double TONG { get; set; }
+        public double TY_LE { get; set; }
+        public int YEAR { get; set; }
+        public int MONTH { get; set; }
+    }
+}

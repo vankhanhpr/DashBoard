@@ -1,0 +1,21 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text;
+
+namespace ClassModel.model.bsc
+{
+    public class I8MobileAcceptance
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int i8mbacceptid { get; set; }
+        public string TTVT { get; set; }
+        public int PCT_CCDV_VA_SCDV_HOAN_TAT { get; set; }
+        public int PCT_HOAN_TAT_QUA_MOBILE_APP { get; set; }
+        public double TY_LE { get; set; }
+        public int YEAR { get; set; }
+        public int MONTH { get; set; }
+    }
+}

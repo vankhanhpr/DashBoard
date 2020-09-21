@@ -1,0 +1,19 @@
+﻿using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace ClassModel.connnection.sql
+{
+    public class DataContext : DbContext
+    {
+        public DataContext(DbContextOptions<DataContext> options) : base(options)
+        {
+        }
+        //public DbSet<SalaryProcess> SalaryProcess { get; set; }
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            //builder.Entity<SalaryProcess>().HasKey(i => new { i.storeid, i.processid });
+        }
+    }
+}

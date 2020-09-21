@@ -1,0 +1,19 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text;
+
+namespace ClassModel.model.bsc
+{
+    public class I8MobileApp
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int i8mbid { get; set; }
+        public string TTVT { get; set; }
+        public double LOGIN { get; set; }
+        public double TONG { get; set; }
+        public double TY_LE { get; set; }
+    }
+}

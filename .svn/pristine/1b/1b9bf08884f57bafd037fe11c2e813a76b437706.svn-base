@@ -1,0 +1,26 @@
+﻿using Microsoft.Extensions.Logging;
+using Quartz;
+using ReportSoftWare.services;
+using System.Threading.Tasks;
+using System;
+namespace ReportSoftWare.schedule
+{
+    [DisallowConcurrentExecution]
+    public class HelloWorldJob : IJob
+    {
+        private IReport m_report;
+        private readonly ILogger<HelloWorldJob> _logger;
+        public HelloWorldJob(ILogger<HelloWorldJob> logger, IReport report)
+        {
+            _logger = logger;
+            m_report = report;
+        }
+
+        public Task Execute(IJobExecutionContext context)
+        {
+            var x = m_report.execureQuery();
+            _logger.LogInformation("Hello VNTP");
+            return Task.CompletedTask;
+        }
+    }
+}
