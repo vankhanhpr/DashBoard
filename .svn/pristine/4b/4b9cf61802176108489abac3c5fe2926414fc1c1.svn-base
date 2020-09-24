@@ -160,46 +160,6 @@ namespace DashBoardApi.Controllers
             return datarp;
         }
 
-        [HttpGet("search")]
-        public dynamic search()
-        {
-            DataRespond datarp = new DataRespond();
-            BscRequest data = new BscRequest();
-            data.i_Thang = "202007";
-            try
-            {
-                //Object[] temp = new Object[] {
-                //                         new { text = "Time", type = "time"},
-                //                         new { text = "Country",type = "string"},
-                //                         new { text = "Number",type = "number"}
-                //};
-                //Object[] temp2 = new Object[] {
-                //};
-                //Object[] x = new Object[] {
-                //      new {
-                //          columns =temp,
-                //        rows = temp2,
-                //        type = "tab"
-                //      }
-                //    };
-
-                List<string>  x = new List<string>();
-                x.Add("upper_25");
-                x.Add("upper_50");
-                x.Add("upper_75");
-                x.Add("upper_80");
-                x.Add("upper_251");
-                return x;
-
-            }
-            catch (Exception e)
-            {
-                datarp.error = e;
-            }
-            return datarp;
-        }
-
-
         [HttpGet("getDetailDataReal")]
         public dynamic getDetailDataReal()
         {

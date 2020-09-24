@@ -1,5 +1,6 @@
 
 .vs/
+.svn/
 ClassModel/obj/
 ClassModel/bin/
 DashBoardApi/obj/
